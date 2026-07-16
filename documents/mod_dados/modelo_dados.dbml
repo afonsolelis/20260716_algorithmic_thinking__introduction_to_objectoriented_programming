@@ -1,0 +1,96 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+// Modelo de Dados - Sistema de Orçamento de Aluguel Imobiliária R.M
+
+// ========================================
+// Tabela de Clientes
+// ========================================
+Table clientes {
+  id integer [primary key, increment]
+  nome varchar [not null, note: 'Nome completo do cliente']
+  possui_criancas boolean [not null, default: false, note: 'Define se aplicável desconto de 5% em Apartamentos']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// ========================================
+// Tabela de Imóveis
+// ========================================
+Table imoveis {
+  id integer [primary key, increment]
+  tipo varchar [not null, note: 'Tipo: Apartamento, Casa ou Estudio']
+  valor_base float [not null, note: 'Valor base: R$700 (Apto), R$900 (Casa), R$1200 (Estudio)']
+  qtd_quartos integer [not null, default: 1, note: 'Quantidade de quartos (1 ou 2)']
+  tem_garagem boolean [not null, default: false, note: 'Se possui vaga de garagem (+R$300 para Apto/Casa)']
+  qtd_vagas integer [not null, default: 0, note: 'Vagas de estacionamento (apenas para Estudio)']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// ========================================
+// Tabela de Contratos
+// ========================================
+Table contratos {
+  id integer [primary key, increment]
+  valor_taxa float [not null, default: 2000.00, note: 'Valor fixo do contrato imobiliário']
+  qtd_parcelas integer [not null, note: 'Quantidade de parcelas (máximo 5)']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// ========================================
+// Tabela de Orçamentos
+// ========================================
+Table orcamentos {
+  id integer [primary key, increment]
+  cliente_id integer [not null, ref: > clientes.id]
+  imovel_id integer [not null, ref: > imoveis.id]
+  contrato_id integer [not null, ref: > contratos.id]
+  valor_aluguel_calculado float [not null, note: 'Valor mensal do aluguel com acréscimos e descontos']
+  valor_parcela_contrato float [not null, note: 'Parcela do contrato (R$2000 / qtd_parcelas)']
+  valor_mensal_final float [not null, note: 'Total mensal: Aluguel + Parcela Contrato']
+  data_criacao timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// ========================================
+// Relacionamentos (Foreign Keys)
+// ========================================
+Ref: orcamentos.cliente_id > clientes.id
+Ref: orcamentos.imovel_id > imoveis.id
+Ref: orcamentos.contrato_id > contratos.id
+
+// ========================================
+// Dados de Exemplo (Records)
+// ========================================
+
+// Clientes
+Records clientes(id, nome, possui_criancas) {
+  1, 'João Silva', false
+  2, 'Maria Santos', true
+  3, 'Pedro Oliveira', false
+  4, 'Ana Costa', true
+  5, 'Carlos Souza', false
+}
+
+// Imóveis
+Records imoveis(id, tipo, valor_base, qtd_quartos, tem_garagem, qtd_vagas) {
+  1, 'Apartamento', 700.00, 1, false, 0
+  2, 'Apartamento', 900.00, 2, true, 0
+  3, 'Casa', 900.00, 1, false, 0
+  4, 'Casa', 1150.00, 2, true, 0
+  5, 'Estudio', 1200.00, 1, false, 2
+  6, 'Estudio', 1260.00, 1, false, 3
+}
+
+// Contratos
+Records contratos(id, valor_taxa, qtd_parcelas) {
+  1, 2000.00, 5
+  2, 2000.00, 3
+  3, 2000.00, 1
+}
+
+// Orçamentos (exemplos de cálculos)
+Records orcamentos(id, cliente_id, imovel_id, contrato_id, valor_aluguel_calculado, valor_parcela_contrato, valor_mensal_final) {
+  1, 1, 1, 1, 665.00, 400.00, 1065.00
+  2, 2, 2, 1, 1330.00, 400.00, 1730.00
+  3, 3, 3, 2, 1200.00, 666.67, 1866.67
+  4, 4, 4, 1, 1462.50, 400.00, 1862.50
+  5, 5, 5, 3, 1510.00, 2000.00, 3510.00
+}

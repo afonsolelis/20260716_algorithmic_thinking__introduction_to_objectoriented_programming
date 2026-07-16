@@ -1,0 +1,90 @@
+@startuml
+' ========================================
+' Diagrama Entidade-Relacionamento
+' Modelo de Dados - Imobiliária R.M
+' ========================================
+
+skinparam backgroundColor #FEFEFE
+skinparam linetype ortho
+
+title Diagrama de Dados - Modelo Entidade-Relacionamento
+
+' ========================================
+' Entidades
+' ========================================
+
+entity "clientes" as c {
+  * id : INTEGER <<PK>>
+  --
+  nome : VARCHAR
+  possui_criancas : BOOLEAN
+  created_at : TIMESTAMP
+}
+
+entity "imoveis" as i {
+  * id : INTEGER <<PK>>
+  --
+  tipo : VARCHAR
+  valor_base : FLOAT
+  qtd_quartos : INTEGER
+  tem_garagem : BOOLEAN
+  qtd_vagas : INTEGER
+  created_at : TIMESTAMP
+}
+
+entity "contratos" as ct {
+  * id : INTEGER <<PK>>
+  --
+  valor_taxa : FLOAT
+  qtd_parcelas : INTEGER
+  created_at : TIMESTAMP
+}
+
+entity "orcamentos" as o {
+  * id : INTEGER <<PK>>
+  --
+  cliente_id : INTEGER <<FK>>
+  imovel_id : INTEGER <<FK>>
+  contrato_id : INTEGER <<FK>>
+  valor_aluguel_calculado : FLOAT
+  valor_parcela_contrato : FLOAT
+  valor_mensal_final : FLOAT
+  data_criacao : TIMESTAMP
+}
+
+' ========================================
+' Relacionamentos
+' ========================================
+
+c ||--o{ o : "possui"
+i ||--o{ o : "é"
+ct ||--o{ o : "possui"
+
+' ========================================
+' Notas
+' ========================================
+
+note bottom of c
+  **Regras:**
+  - Sem crianças = -5% em Apto
+end note
+
+note bottom of i
+  **Tipos:**
+  - Apartamento: R$700
+  - Casa: R$900
+  - Estudio: R$1200
+end note
+
+note bottom of ct
+  **Regras:**
+  - Valor fixo: R$2000
+  - Até 5 parcelas
+end note
+
+note bottom of o
+  **Fórmula:**
+  - Total = Aluguel + Parcela
+end note
+
+@enduml
