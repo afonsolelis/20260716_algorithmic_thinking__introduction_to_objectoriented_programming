@@ -1,0 +1,141 @@
+@startuml
+' ========================================
+' Diagrama de Sequência - Fluxo de Cálculo
+' Detalhamento por Tipo de Imóvel
+' ========================================
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+
+title Diagrama de Sequência - Detalhamento dos Cálculos
+
+actor "Usuário" as User
+participant "View" as View
+participant "Controller" as Controller
+participant "Service" as Service
+
+== Fluxo de Cálculo por Tipo de Imóvel ==
+
+User -> View : Solicitar cálculo do orçamento
+View -> Controller : calcular_orcamento(dados)
+Controller -> Service : processar_orcamento()
+
+' ========================================
+' Cenário 1: Apartamento
+' ========================================
+group [Cenário 1] Apartamento
+  Service -> Service : instanciar Apartamento()
+  
+  note over Service
+    **Entrada:**
+    • qtd_quartos = 2
+    • tem_garagem = true
+    • possui_criancas = false
+  end note
+  
+  Service -> Service : valor_base = 700
+  
+  alt qtd_quartos == 2
+    Service -> Service : valor_base += 200
+    note right : +R$ 200 por 2º quarto
+  end
+  
+  alt tem_garagem == true
+    Service -> Service : valor_base += 300
+    note right : +R$ 300 garagem
+  end
+  
+  alt !possui_criancas
+    Service -> Service : valor_base -= (valor * 0.05)
+    note right : -5% desconto sem crianças
+  end
+  
+  note over Service : **Aluguel: R$ 1.140,00**\n(700 + 200 + 300) - 5%
+end
+
+' ========================================
+' Cenário 2: Casa
+' ========================================
+group [Cenário 2] Casa
+  Service -> Service : instanciar Casa()
+  
+  note over Service
+    **Entrada:**
+    • qtd_quartos = 2
+    • tem_garagem = false
+  end note
+  
+  Service -> Service : valor_base = 900
+  
+  alt qtd_quartos == 2
+    Service -> Service : valor_base += 250
+    note right : +R$ 250 por 2º quarto
+  end
+  
+  alt tem_garagem == true
+    Service -> Service : valor_base += 300
+    note right : +R$ 300 garagem
+  end
+  
+  note over Service : **Aluguel: R$ 1.150,00**\n(900 + 250)
+end
+
+' ========================================
+' Cenário 3: Estúdio
+' ========================================
+group [Cenário 3] Estúdio
+  Service -> Service : instanciar Estudio()
+  
+  note over Service
+    **Entrada:**
+    • qtd_vagas = 3
+  end note
+  
+  Service -> Service : valor_base = 1200
+  
+  alt qtd_vagas >= 2
+    Service -> Service : valor_base += 250
+    note right : +R$ 250 por 2 vagas
+  end
+  
+  alt qtd_vagas > 2
+    Service -> Service : valor_base += (qtd_vagas - 2) * 60
+    note right : +R$ 60 por vaga extra
+  end
+  
+  note over Service : **Aluguel: R$ 1.510,00**\n1200 + 250 + (1 × 60)
+end
+
+' ========================================
+' Cálculo da Parcela do Contrato
+' ========================================
+group Cálculo do Contrato
+  Service -> Service : contrato = Contrato(qtd_parcelas)
+  
+  note over Service
+    **Contrato:**
+    • Valor fixo: R$ 2.000,00
+    • qtd_parcelas = 5
+  end note
+  
+  Service -> Service : parcela = 2000 / qtd_parcelas
+  note right : Parcela = R$ 400,00
+end
+
+' ========================================
+' Total Mensal
+' ========================================
+group Cálculo Final
+  Service -> Service : total = aluguel + parcela
+  
+  note over Service
+    **Total Mensal:**
+    Aluguel + Parcela Contrato
+  end note
+end
+
+Service --> Controller : orcamento_final
+Controller --> View : exibir_resultado()
+View --> User : **Resultado Final**
+
+@enduml

@@ -1,0 +1,115 @@
+@startuml
+' ========================================
+' Diagrama de Classes - Imobiliária R.M
+' ========================================
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 14
+skinparam defaultFontSize 12
+
+title Diagrama de Classes - Sistema de Orçamento de Aluguel
+
+' ========================================
+' Classe Abstrata - Imóvel
+' ========================================
+abstract class Imovel {
+  - valor_base : float
+  - qtd_quartos : int
+  - tem_garagem : bool
+  + __init__(qtd_quartos : int, tem_garagem : bool)
+  + {abstract} calcular_aluguel() : float
+  + get_valor_base() : float
+}
+
+' ========================================
+' Classes Filhas - Tipos de Imóvel
+' ========================================
+class Apartamento {
+  - desconto_aplicavel : bool
+  + __init__(qtd_quartos : int, tem_garagem : bool, possui_criancas : bool)
+  + calcular_aluguel() : float
+  - aplicar_desconto() : float
+}
+
+class Casa {
+  + __init__(qtd_quartos : int, tem_garagem : bool)
+  + calcular_aluguel() : float
+}
+
+class Estudio {
+  - qtd_vagas : int
+  + __init__(qtd_vagas : int)
+  + calcular_aluguel() : float
+  - calcular_garagem() : float
+}
+
+' ========================================
+' Classe Cliente
+' ========================================
+class Cliente {
+  - nome : str
+  - possui_criancas : bool
+  + __init__(nome : str, possui_criancas : bool)
+  + get_nome() : str
+  + get_possui_criancas() : bool
+}
+
+' ========================================
+' Classe Contrato
+' ========================================
+class Contrato {
+  - {static} VALOR_CONTRATO : float = 2000.00
+  - qtd_parcelas : int
+  + __init__(qtd_parcelas : int)
+  + calcular_valor_parcela() : float
+  + get_qtd_parcelas() : int
+}
+
+' ========================================
+' Classe Orçamento (Composição)
+' ========================================
+class Orcamento {
+  - cliente : Cliente
+  - imovel : Imovel
+  - contrato : Contrato
+  - valor_aluguel : float
+  - valor_mensal_total : float
+  + __init__(cliente : Cliente, imovel : Imovel, contrato : Contrato)
+  + calcular_orcamento() : float
+  + get_valor_mensal() : float
+  + exibir_resumo() : str
+  + exportar_csv(arquivo : str) : void
+}
+
+' ========================================
+' Relacionamentos
+' ========================================
+Apartamento --|> Imovel : herda
+Casa --|> Imovel : herda
+Estudio --|> Imovel : herda
+
+Orcamento "1" *-- "1" Cliente : contém
+Orcamento "1" *-- "1" Imovel : contém
+Orcamento "1" *-- "1" Contrato : contém
+
+' ========================================
+' Notas
+' ========================================
+note right of Imovel
+  Classe abstrata que define
+  a estrutura base para todos
+  os tipos de imóveis
+end note
+
+note right of Contrato
+  Valor fixo: R$ 2.000,00
+  Parcelamento: até 5x
+end note
+
+note bottom of Orcamento
+  Classe central que orquestra
+  o cálculo do orçamento
+  completo
+end note
+
+@enduml

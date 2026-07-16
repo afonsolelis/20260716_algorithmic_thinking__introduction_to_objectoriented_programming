@@ -1,0 +1,142 @@
+@startuml
+' ========================================
+' Diagrama de Sequência - Arquitetura em Camadas
+' Sistema de Orçamento de Aluguel Imobiliária R.M
+' ========================================
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam sequenceLifeLineBorderColor #666666
+skinparam sequenceGroupBorderColor #888888
+skinparam sequenceDividerBorderColor #888888
+
+title Diagrama de Sequência - Fluxo de Orçamento de Aluguel
+
+' ========================================
+' Participantes
+' ========================================
+actor "Usuário\n(Corretor)" as User
+participant "View\n(Presentation)" as View
+participant "Controller\n(Controle)" as Controller
+participant "Service\n(Negócio)" as Service
+participant "Repository\n(Dados)" as Repository
+
+' ========================================
+'grp
+' ========================================
+
+== 1. Cadastro do Cliente (RF05) ==
+
+User -> View : Informa dados do cliente\n(nome, possui crianças)
+View -> Controller : enviar_dados_cliente(nome, possui_criancas)
+Controller -> Service : cadastrar_cliente(nome, possui_criancas)
+Service -> Repository : salvar_cliente(cliente)
+Repository --> Service : cliente_cadastrado
+Service --> Controller : cliente_ok
+Controller --> View : exibir_mensagem("Cliente cadastrado")
+View --> User : Mostrar confirmação
+
+== 2. Seleção do Imóvel (RF01, RF02, RF03, RF04) ==
+
+User -> View : Seleciona tipo de imóvel\n(Apartamento/Casa/Estúdio)
+User -> View : Informa qtde quartos\n(1 ou 2)
+User -> View : Informa garagem\n(Sim/Não)
+User -> View : [Estúdio] Informa qtde vagas
+
+View -> Controller : enviar_dados_imovel(tipo, quartos, garagem, vagas)
+Controller -> Service : criar_imovel(tipo, quartos, garagem, vagas)
+
+alt Apartamento
+  Service -> Service : Apartamento(quartos, garagem, possui_criancas)
+else Casa
+  Service -> Service : Casa(quartos, garagem)
+else Estúdio
+  Service -> Service : Estudio(vagas)
+end
+
+Service --> Controller : imovel_criado
+Controller --> View : exibir_imovel_configurado
+View --> User : Mostrar configuração do imóvel
+
+== 3. Configuração do Contrato (RF10) ==
+
+User -> View : Quantas parcelas? (1-5x)
+
+View -> Controller : enviar_qtd_parcelas(qtd)
+Controller -> Service : criar_contrato(qtd)
+
+Service -> Service : Contrato(qtd_parcelas)
+note right of Service : Valor fixo: R$ 2.000,00\nParcela = 2000 / qtd_parcelas
+
+Service --> Controller : contrato_criado
+Controller --> View : exibir_parcelas(valor_parcela)
+View --> User : Mostrar parcela do contrato
+
+== 4. Cálculo do Orçamento (RF06, RF07, RF08, RF09) ==
+
+User -> View : Solicitar cálculo do orçamento
+
+View -> Controller : calcular_orcamento(cliente_id, imovel_id, contrato_id)
+Controller -> Service : processar_orcamento(cliente, imovel, contrato)
+
+group Cálculo do Aluguel
+  Service -> Service : imovel.calcular_aluguel()
+  
+  note over Service
+    **Regras aplicadas:**
+    • Apto: R$700 + R$200 (2q) + R$300 (garagem) - 5% (sem crianças)
+    • Casa: R$900 + R$250 (2q) + R$300 (garagem)
+    • Estúdio: R$1200 + R$250 (2v) + R$60 × vagas extras
+  end note
+end
+
+Service -> Service : contrato.calcular_valor_parcela()
+note right of Service : Parcela = R$ 2.000,00 / qtd_parcelas
+
+Service -> Service : valor_mensal = aluguel + parcela_contrato
+
+Service -> Repository : salvar_orcamento(orcamento)
+Repository --> Service : orcamento_salvo
+
+Service --> Controller : orcamento_calculado
+Controller --> View : exibir_orcamento(valor_total, detalhes)
+
+View --> User : **Exibir Resumo:**\nValor aluguel: R$ X\nParcela contrato: R$ Y\nTotal mensal: R$ Z
+
+== 5. Exportação CSV (RF12) ==
+
+User -> View : Solicitar exportação .csv
+
+View -> Controller : exportar_csv(orcamento_id)
+Controller -> Service : gerar_csv(orcamento)
+
+loop 12 meses
+  Service -> Service : calcular_parcela_mensal(mes)
+end
+
+Service -> Repository : buscar_orcamento(id)
+Repository --> Service : dados_orcamento
+
+Service -> Service : criar_arquivo_csv(dados, 12_meses)
+note right of Service : Gera arquivo com:\nMês | Valor Aluguel | Parcela | Total
+
+Service --> Service : salvar_csv("orcamento_12meses.csv")
+Service --> Controller : csv_gerado_sucesso
+Controller --> View : exibir_mensagem("Arquivo gerado")
+View --> User : **Download:** orcamento_12meses.csv
+
+== Resumo do Fluxo ==
+
+note over User, Repository
+  **Arquitetura em Camadas:**
+  
+  **View (Apresentação):** Interface com o usuário, coleta de dados
+  
+  **Controller (Controle):** Recebe requisições, valida e direciona
+  
+  **Service (Negócio):** Lógica de cálculo, regras de negócio
+  
+  **Repository (Dados):** Persistência e recuperação de dados
+end note
+
+@enduml

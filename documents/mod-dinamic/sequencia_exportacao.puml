@@ -1,0 +1,93 @@
+@startuml
+' ========================================
+' Diagrama de Sequência - Exportação CSV
+' ========================================
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+
+title Diagrama de Sequência - Exportação CSV (12 Parcelas Anuais)
+
+actor "Usuário" as User
+participant "View" as View
+participant "Controller" as Controller
+participant "Service" as Service
+participant "Repository" as Repository
+database "CSV File" as CSV
+
+== Solicitação de Exportação ==
+
+User -> View : Clicar "Exportar CSV"
+View -> Controller : exportar_csv(orcamento_id)
+Controller -> Service : gerar_csv(orcamento_id)
+
+== Busca dos Dados ==
+
+Service -> Repository : buscar_orcamento(orcamento_id)
+Repository --> Service : orcamento_dados
+
+note over Service
+  **Dados recebidos:**
+  • Tipo imóvel
+  • Valor aluguel mensal
+  • Parcela contrato
+  • Valor total mensal
+end note
+
+== Geração do Arquivo ==
+
+Service -> Service : criar_cabecalho_csv()
+note right : Mês,Valor Aluguel,\nParcela Contrato,Total
+
+Service -> Service : inicializar_contador_mes = 1
+
+loop Para cada mês (1 a 12)
+  
+  Service -> Service : calcular_valor_mes(contador)
+  
+  note over Service
+    **Mês {contador}:**
+    • Aluguel: R$ X
+    • Parcela: R$ Y
+    • Total: R$ Z
+  end note
+  
+  Service -> Service : adicionar_linha_csv(mes, aluguel, parcela, total)
+  
+  Service -> Service : contador += 1
+  
+end
+
+Service -> Service : finalizar_csv()
+
+== Salvamento ==
+
+Service -> CSV : escrever_conteudo(conteudo_csv)
+
+note right of CSV
+  **orcamento_12meses.csv**
+  
+  ```
+  Mês,Aluguel,Parcela,Total
+  1,1140.00,400.00,1540.00
+  2,1140.00,400.00,1540.00
+  3,1140.00,400.00,1540.00
+  ...
+  12,1140.00,400.00,1540.00
+  ```
+end note
+
+CSV --> Service : arquivo_salvo
+
+== Confirmação ==
+
+Service --> Controller : csv_gerado_sucesso
+Controller --> View : exibir_sucesso(caminho_arquivo)
+View --> User : **Download disponível:**\norcamento_12meses.csv
+
+note over User
+  Arquivo pronto para
+  importação em planilhas
+end note
+
+@enduml
