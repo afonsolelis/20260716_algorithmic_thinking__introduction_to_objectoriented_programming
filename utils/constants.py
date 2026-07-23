@@ -1,0 +1,23 @@
+"""Constantes de negócio — valores definidos em documents/modelagem_problema.md."""
+
+# Valores base (seção 3.1)
+VALOR_BASE_APARTAMENTO = 700.00
+VALOR_BASE_CASA = 900.00
+VALOR_BASE_ESTUDIO = 1200.00
+
+# Acréscimos (seção 3.2)
+ACRESCIMO_QUARTO_APARTAMENTO = 200.00
+ACRESCIMO_QUARTO_CASA = 250.00
+ACRESCIMO_GARAGEM = 300.00
+ACRESCIMO_ESTUDIO_2_VAGAS = 250.00
+ACRESCIMO_ESTUDIO_VAGA_EXTRA = 60.00
+
+# Descontos (seção 3.3)
+DESCONTO_APARTAMENTO_SEM_CRIANCAS = 0.05
+
+# Contrato (seção 3.4)
+VALOR_CONTRATO = 2000.00
+MAX_PARCELAS_CONTRATO = 5
+
+# Exportação (seção 3.5)
+QTD_PARCELAS_ANUAIS = 12
