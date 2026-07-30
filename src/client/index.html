@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🏠 Imobiliária R.M</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>🏠 Imobiliária R.M</h1>
+      <p class="subtitulo">Orçamento de aluguel — casas, apartamentos e estúdios</p>
+    </header>
+
+    <main>
+      <section class="card" id="painel-formulario">
+        <h2>📝 Novo Orçamento</h2>
+        <form id="form-orcamento">
+          <fieldset>
+            <legend>Cliente</legend>
+            <label for="nome">Nome do cliente</label>
+            <input id="nome" name="nome" type="text" required placeholder="Ex.: Ana Souza" />
+
+            <label class="checkbox">
+              <input id="possuiCriancas" name="possuiCriancas" type="checkbox" />
+              Possui crianças?
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Imóvel</legend>
+            <label for="tipoImovel">Tipo de imóvel</label>
+            <select id="tipoImovel" name="tipoImovel">
+              <option value="apartamento">Apartamento</option>
+              <option value="casa">Casa</option>
+              <option value="estudio">Estúdio</option>
+            </select>
+
+            <div id="campos-quartos">
+              <label for="qtdQuartos">Quantidade de quartos</label>
+              <input id="qtdQuartos" name="qtdQuartos" type="number" min="1" max="2" value="1" />
+
+              <label class="checkbox">
+                <input id="temGaragem" name="temGaragem" type="checkbox" />
+                Possui garagem?
+              </label>
+            </div>
+
+            <div id="campos-vagas" hidden>
+              <label for="qtdVagas">Quantidade de vagas</label>
+              <input id="qtdVagas" name="qtdVagas" type="number" min="0" max="10" value="1" />
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Contrato (R$ 2.000,00)</legend>
+            <label for="qtdParcelas">Parcelamento do contrato</label>
+            <select id="qtdParcelas" name="qtdParcelas">
+              <option value="1">1x</option>
+              <option value="2">2x</option>
+              <option value="3">3x</option>
+              <option value="4">4x</option>
+              <option value="5">5x</option>
+            </select>
+          </fieldset>
+
+          <button type="submit" id="btn-gerar">Gerar orçamento</button>
+        </form>
+        <p id="mensagem-erro" class="erro" role="alert" hidden></p>
+      </section>
+
+      <section class="card" id="painel-resultado" hidden>
+        <h2 id="resultado-titulo">Orçamento</h2>
+
+        <div class="metricas">
+          <div class="metrica">
+            <span class="rotulo">Aluguel mensal</span>
+            <span class="valor" id="metrica-aluguel">R$ 0,00</span>
+          </div>
+          <div class="metrica">
+            <span class="rotulo" id="metrica-contrato-rotulo">Contrato</span>
+            <span class="valor" id="metrica-contrato">R$ 0,00</span>
+          </div>
+          <div class="metrica destaque">
+            <span class="rotulo">Total mensal</span>
+            <span class="valor" id="metrica-total">R$ 0,00</span>
+          </div>
+        </div>
+
+        <details>
+          <summary>Ver resumo completo</summary>
+          <pre id="resumo-completo"></pre>
+        </details>
+
+        <a id="btn-download" class="botao-download" href="#" download>
+          ⬇️ Baixar orçamento anual (.csv) — 12 parcelas
+        </a>
+      </section>
+
+      <section class="card" id="painel-vazio">
+        <p>Preencha os dados ao lado e clique em <strong>Gerar orçamento</strong>.</p>
+      </section>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
