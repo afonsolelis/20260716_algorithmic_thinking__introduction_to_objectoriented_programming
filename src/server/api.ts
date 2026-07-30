@@ -15,6 +15,7 @@ import { Imovel } from "../models/Imovel.js";
 import { Orcamento } from "../models/Orcamento.js";
 import { CalculoService } from "../services/CalculoService.js";
 import { ExportService } from "../services/ExportService.js";
+import { runInTransaction } from "../database/connection.js";
 import {
   buscarOrcamentoCompleto,
   inserirCliente,
@@ -96,59 +97,82 @@ function reconstruirOrcamento(dados: {
   return orcamento;
 }
 
+function validarNovoOrcamentoBody(body: Partial<NovoOrcamentoBody>): string | null {
+  if (!body.nome?.trim()) {
+    return "Informe o nome do cliente.";
+  }
+  if (!body.tipoImovel || !["apartamento", "casa", "estudio"].includes(body.tipoImovel)) {
+    return "Tipo de imóvel inválido.";
+  }
+  if (!body.qtdParcelas || body.qtdParcelas < 1 || body.qtdParcelas > MAX_PARCELAS_CONTRATO) {
+    return `Quantidade de parcelas deve ser entre 1 e ${MAX_PARCELAS_CONTRATO}.`;
+  }
+  return null;
+}
+
 export const apiRouter = Router();
 
 apiRouter.post("/orcamentos", (req: Request, res: Response) => {
   const body = req.body as Partial<NovoOrcamentoBody>;
 
-  if (!body.nome?.trim()) {
-    res.status(400).json({ erro: "Informe o nome do cliente." });
-    return;
-  }
-  if (!body.tipoImovel || !["apartamento", "casa", "estudio"].includes(body.tipoImovel)) {
-    res.status(400).json({ erro: "Tipo de imóvel inválido." });
-    return;
-  }
-  if (!body.qtdParcelas || body.qtdParcelas < 1 || body.qtdParcelas > MAX_PARCELAS_CONTRATO) {
-    res.status(400).json({ erro: `Quantidade de parcelas deve ser entre 1 e ${MAX_PARCELAS_CONTRATO}.` });
+  const erroValidacao = validarNovoOrcamentoBody(body);
+  if (erroValidacao) {
+    res.status(400).json({ erro: erroValidacao });
     return;
   }
 
+  const dadosCompletos = body as NovoOrcamentoBody;
+  const dadosImovel: DadosImovel = {
+    tipoImovel: dadosCompletos.tipoImovel,
+    qtdQuartos: dadosCompletos.qtdQuartos ?? 1,
+    temGaragem: Boolean(dadosCompletos.temGaragem),
+    qtdVagas: dadosCompletos.qtdVagas ?? 0,
+    possuiCriancas: Boolean(dadosCompletos.possuiCriancas),
+  };
+
+  // Construção/validação de domínio: erros aqui são mensagens de negócio seguras para o cliente.
+  let cliente: Cliente;
+  let imovel: Imovel;
+  let contrato: Contrato;
+  let orcamento: Orcamento;
+  let valorMensal: number;
+  let aluguel: number;
+  let parcela: number;
   try {
-    const dadosCompletos = body as NovoOrcamentoBody;
-    const dadosImovel: DadosImovel = {
-      tipoImovel: dadosCompletos.tipoImovel,
-      qtdQuartos: dadosCompletos.qtdQuartos ?? 1,
-      temGaragem: Boolean(dadosCompletos.temGaragem),
-      qtdVagas: dadosCompletos.qtdVagas ?? 0,
-      possuiCriancas: Boolean(dadosCompletos.possuiCriancas),
-    };
-    const cliente = new Cliente({ nome: dadosCompletos.nome.trim(), possuiCriancas: dadosImovel.possuiCriancas });
-    const imovel = construirImovel(dadosImovel);
-    const contrato = new Contrato({ qtdParcelas: dadosCompletos.qtdParcelas });
-    const orcamento = new Orcamento(cliente, imovel, contrato);
-    const valorMensal = orcamento.calcularOrcamento();
+    cliente = new Cliente({ nome: dadosCompletos.nome.trim(), possuiCriancas: dadosImovel.possuiCriancas });
+    imovel = construirImovel(dadosImovel);
+    contrato = new Contrato({ qtdParcelas: dadosCompletos.qtdParcelas });
+    orcamento = new Orcamento(cliente, imovel, contrato);
+    valorMensal = orcamento.calcularOrcamento();
+    aluguel = CalculoService.calcularAluguel(imovel);
+    parcela = CalculoService.calcularParcela(contrato);
+  } catch (erro) {
+    res.status(400).json({ erro: erro instanceof Error ? erro.message : "Erro ao calcular orçamento." });
+    return;
+  }
 
-    const aluguel = CalculoService.calcularAluguel(imovel);
-    const parcela = CalculoService.calcularParcela(contrato);
-
-    const clienteId = inserirCliente(cliente.getNome(), cliente.getPossuiCriancas());
-    const imovelId = inserirImovel(dadosPersistenciaImovel(dadosImovel, imovel));
-    const contratoId = inserirContrato({
-      clienteId,
-      qtdParcelas: contrato.getQtdParcelas(),
-      valorParcela: parcela,
-    });
-    const orcamentoId = inserirOrcamento({
-      clienteId,
-      imovelId,
-      contratoId,
-      valorAluguelBase: imovel.getValorBase(),
-      acrescimos: 0,
-      desconto: 0,
-      valorAluguelComDesconto: aluguel,
-      valorParcelaContrato: parcela,
-      valorFinalMensal: valorMensal,
+  // Persistência: erros aqui podem vazar detalhes internos (SQL, filesystem) — não repassar ao cliente.
+  try {
+    const { orcamentoId } = runInTransaction(() => {
+      const clienteId = inserirCliente(cliente.getNome(), cliente.getPossuiCriancas());
+      const imovelId = inserirImovel(dadosPersistenciaImovel(dadosImovel, imovel));
+      const contratoId = inserirContrato({
+        clienteId,
+        qtdParcelas: contrato.getQtdParcelas(),
+        valorParcela: parcela,
+      });
+      const orcamentoId = inserirOrcamento({
+        clienteId,
+        imovelId,
+        contratoId,
+        valorAluguelBase: imovel.getValorBase(),
+        acrescimos: 0,
+        desconto: 0,
+        valorAluguelComDesconto: aluguel,
+        valorParcelaContrato: parcela,
+        valorFinalMensal: valorMensal,
+      });
+      return { orcamentoId };
     });
 
     res.status(201).json({
@@ -160,17 +184,35 @@ apiRouter.post("/orcamentos", (req: Request, res: Response) => {
       resumo: orcamento.exibirResumo(),
     });
   } catch (erro) {
-    res.status(400).json({ erro: erro instanceof Error ? erro.message : "Erro ao calcular orçamento." });
+    console.error("Falha ao persistir orçamento:", erro);
+    res.status(500).json({ erro: "Não foi possível salvar o orçamento. Tente novamente." });
   }
 });
 
 apiRouter.get("/orcamentos", (_req: Request, res: Response) => {
-  res.json(listarOrcamentosResumo());
+  try {
+    res.json(listarOrcamentosResumo());
+  } catch (erro) {
+    console.error("Falha ao listar orçamentos:", erro);
+    res.status(500).json({ erro: "Não foi possível listar os orçamentos." });
+  }
 });
 
 apiRouter.get("/orcamentos/:id/csv", (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const dados = buscarOrcamentoCompleto(id);
+  if (!Number.isInteger(id) || id < 1) {
+    res.status(400).json({ erro: "Id de orçamento inválido." });
+    return;
+  }
+
+  let dados: ReturnType<typeof buscarOrcamentoCompleto>;
+  try {
+    dados = buscarOrcamentoCompleto(id);
+  } catch (erro) {
+    console.error("Falha ao buscar orçamento:", erro);
+    res.status(500).json({ erro: "Não foi possível buscar o orçamento." });
+    return;
+  }
   if (!dados) {
     res.status(404).json({ erro: "Orçamento não encontrado." });
     return;
@@ -185,7 +227,8 @@ apiRouter.get("/orcamentos/:id/csv", (req: Request, res: Response) => {
       rmSync(dir, { recursive: true, force: true });
     });
   } catch (erro) {
+    console.error("Falha ao gerar CSV:", erro);
     rmSync(dir, { recursive: true, force: true });
-    res.status(500).json({ erro: erro instanceof Error ? erro.message : "Erro ao gerar CSV." });
+    res.status(500).json({ erro: "Não foi possível gerar o CSV." });
   }
 });
